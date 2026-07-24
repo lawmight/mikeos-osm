@@ -31,3 +31,10 @@
 		respond "mikeos-osm: /nominatim /overpass /route" 200
 	}
 }
+
+# Basemap tiles — PUBLIC (no token): MapLibre loads /style.json + /planet/{z}/{x}/{y}.mvt directly.
+# Backed by the mikeos-basemap container (go-pmtiles + style + assets) on :8082.
+tiles.osmike.com {
+	encode gzip
+	reverse_proxy basemap:8082
+}

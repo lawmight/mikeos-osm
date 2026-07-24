@@ -46,10 +46,26 @@ services:
       - ${DATA_DIR}/osrm:/data
     restart: unless-stopped
 
+  # Basemap tiles (Protomaps planet PMTiles) — reuses the mikeos-basemap container (go-pmtiles +
+  # style + assets) as a plain-HTTP backend on :8082; the host Caddy fronts it at tiles.osmike.com.
+  # Serving PMTiles is byte-range reads → negligible RAM. Clone milkosten/mikeos-basemap next to
+  # this repo (../mikeos-basemap) so the build context resolves.
+  basemap:
+    build: ../mikeos-basemap
+    container_name: mikeos-basemap
+    environment:
+      PORT: "8082"
+      PUBLIC_URL: https://tiles.osmike.com
+      PMTILES_DOWNLOAD_URL: ${PMTILES_DOWNLOAD_URL}
+      SELF_HOST_ASSETS: "1"
+    volumes:
+      - ${DATA_DIR}/basemap:/data
+    restart: unless-stopped
+
   caddy:
     image: caddy:2
     container_name: mikeos-caddy
-    depends_on: [overpass, nominatim, osrm]
+    depends_on: [overpass, nominatim]
     ports:
       - "80:80"
       - "443:443"

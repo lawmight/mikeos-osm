@@ -1,0 +1,64 @@
+# mikeos-osm — self-hosted PLANET OpenStreetMap stack for MikeOS.
+#
+#   Overpass  → named-POI + tag/spatial search   (wiktorn/overpass-api, auto minute-diffs)
+#   Nominatim → geocoding + reverse-geocoding     (mediagis/nominatim, auto replication)
+#   OSRM      → routing (MLD, car)                (project-osrm, rebuilt periodically)
+#   Caddy     → TLS + Bearer-token gate + routes  ( /overpass  /nominatim  /route )
+#
+# One box (Hetzner: Ryzen 9, 128 GB ECC, 3.84 TB+ NVMe). See README.md for the import runbook —
+# Nominatim first (its import wants ~128 GB RAM), then Overpass + OSRM. Point NVMe at $DATA_DIR.
+
+services:
+  overpass:
+    image: wiktorn/overpass-api:latest
+    container_name: mikeos-overpass
+    environment:
+      OVERPASS_MODE: init                       # build a fresh DB from the planet file
+      OVERPASS_META: "no"                        # 'attic' keeps full history (much bigger)
+      OVERPASS_PLANET_URL: ${PLANET_URL}
+      OVERPASS_DIFF_URL: ${REPLICATION_URL}
+      OVERPASS_RULES_LOAD: "10"
+      OVERPASS_UPDATE_SLEEP: "3600"              # apply diffs hourly after the first import
+    volumes:
+      - ${DATA_DIR}/overpass:/db
+    restart: unless-stopped
+
+  nominatim:
+    image: mediagis/nominatim:4.4                # PostgreSQL 14 inside → data path below
+    container_name: mikeos-nominatim
+    environment:
+      PBF_URL: ${PLANET_URL}
+      REPLICATION_URL: ${REPLICATION_URL}
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
+      IMPORT_STYLE: full
+      THREADS: ${THREADS}
+    volumes:
+      - ${DATA_DIR}/nominatim:/var/lib/postgresql/14/main
+    shm_size: "2g"
+    restart: unless-stopped
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: mikeos-osrm
+    # Requires the .osrm files built first — see scripts/osrm-build.sh (extract→partition→customize).
+    command: osrm-routed --algorithm mld --max-table-size 8000 /data/planet.osrm
+    volumes:
+      - ${DATA_DIR}/osrm:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    container_name: mikeos-caddy
+    depends_on: [overpass, nominatim, osrm]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      OSM_DOMAIN: ${OSM_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      OSM_TOKEN: ${OSM_TOKEN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ${DATA_DIR}/caddy/data:/data
+      - ${DATA_DIR}/caddy/config:/config
+    restart: unless-stopped

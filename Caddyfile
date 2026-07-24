@@ -1,0 +1,33 @@
+# TLS (auto Let's Encrypt) + a Bearer-token gate in front of the three OSM services.
+# The app sends  Authorization: Bearer <OSM_TOKEN>  on every geo call.
+#
+#   https://$OSM_DOMAIN/nominatim/...   → Nominatim (geocode / reverse / search)
+#   https://$OSM_DOMAIN/overpass/...    → Overpass  (/api/interpreter)
+#   https://$OSM_DOMAIN/route/...       → OSRM      (/route/v1/driving/...)
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$OSM_DOMAIN} {
+	encode gzip
+
+	# Anything without the right Bearer token → 401 (services are read-only, but keep them ours).
+	@unauth not header Authorization "Bearer {$OSM_TOKEN}"
+	handle @unauth {
+		respond "unauthorized" 401
+	}
+
+	handle_path /nominatim/* {
+		reverse_proxy nominatim:8080
+	}
+	handle_path /overpass/* {
+		reverse_proxy overpass:80
+	}
+	handle_path /route/* {
+		reverse_proxy osrm:5000
+	}
+	handle {
+		respond "mikeos-osm: /nominatim /overpass /route" 200
+	}
+}

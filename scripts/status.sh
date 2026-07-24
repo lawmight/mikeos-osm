@@ -65,7 +65,9 @@ fi
 # --- Basemap tiles (Protomaps PMTiles, served at tiles.osmike.com) ---
 if docker ps --format '{{.Names}}' | grep -q '^mikeos-basemap$'; then
   el=$(elapsed mikeos-basemap)
-  if [ "$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://localhost:8082/planet.json 2>/dev/null)" = "200" ]; then
+  # The basemap container serves on :8082 over the DOCKER NETWORK only (not published to the host),
+  # so check the real public path the phone uses, not localhost:8082.
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' -m 12 https://tiles.osmike.com/planet.json 2>/dev/null)" = "200" ]; then
     echo "| Basemap tiles | ✅ serving | 100% | $el | done |"
   else
     part=$(stat -c %s /data/basemap/planet.pmtiles.partial 2>/dev/null || echo 0)

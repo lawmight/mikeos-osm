@@ -62,5 +62,22 @@ else
   echo "| OSRM | ⏸ queued (starts after Nominatim import) | 0% | - | after Nominatim |"
 fi
 
+# --- Basemap tiles (Protomaps PMTiles, served at tiles.osmike.com) ---
+if docker ps --format '{{.Names}}' | grep -q '^mikeos-basemap$'; then
+  el=$(elapsed mikeos-basemap)
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://localhost:8082/planet.json 2>/dev/null)" = "200" ]; then
+    echo "| Basemap tiles | ✅ serving | 100% | $el | done |"
+  else
+    part=$(stat -c %s /data/basemap/planet.pmtiles.partial 2>/dev/null || echo 0)
+    if [ "$part" -gt 0 ] 2>/dev/null; then
+      echo "| Basemap tiles | downloading planet.pmtiles | $((part/1270000000))% of ~127GB | $el | ~few h (source ~10MB/s) |"
+    else
+      echo "| Basemap tiles | starting… | - | $el | - |"
+    fi
+  fi
+else
+  echo "| Basemap tiles | not running | - | - | - |"
+fi
+
 echo ""
 echo "disk: $(df -h / | awk 'NR==2{print $3" / "$2" ("$5")"}')  ·  $(date -u '+%Y-%m-%d %H:%M UTC')"

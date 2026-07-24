@@ -5,17 +5,25 @@
 set -euo pipefail
 
 : "${DATA_DIR:=/data}"
-: "${PLANET_URL:=https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf}"
 IMG="ghcr.io/project-osrm/osrm-backend:latest"
 OSRM_DIR="$DATA_DIR/osrm"
+PLANET_SRC="$DATA_DIR/planet-src/planet.osm.pbf"   # downloaded ONCE on the host, shared
 
 mkdir -p "$OSRM_DIR"
 cd "$OSRM_DIR"
 
+# The planet .pbf is downloaded ON THE HOST (never in a container):
+#   scripts/host-download.sh https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf "$PLANET_SRC"
+# Here we just hardlink it into the OSRM dir (same filesystem → zero copy, zero download) so
+# osrm-extract can write the .osrm outputs alongside it.
+if [ ! -f "$PLANET_SRC" ]; then
+  echo "[osrm] ERROR: $PLANET_SRC not found. Download it on the host first:"
+  echo "  bash scripts/host-download.sh https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf $PLANET_SRC"
+  exit 1
+fi
 if [ ! -f planet.osm.pbf ]; then
-  echo "[osrm] downloading planet.osm.pbf (~80 GB, resumable)…"
-  curl -fL -C - "$PLANET_URL" -o planet.osm.pbf.partial
-  mv planet.osm.pbf.partial planet.osm.pbf
+  ln "$PLANET_SRC" planet.osm.pbf 2>/dev/null || cp "$PLANET_SRC" planet.osm.pbf
+  echo "[osrm] linked host planet.osm.pbf into $OSRM_DIR (no download)"
 fi
 
 echo "[osrm] extract (car profile) — heavy, uses lots of RAM/NVMe temp…"

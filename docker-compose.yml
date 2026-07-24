@@ -15,17 +15,28 @@ services:
     environment:
       OVERPASS_MODE: init                       # build a fresh DB from the planet file
       OVERPASS_META: "no"                        # 'attic' keeps full history (much bigger)
-      OVERPASS_PLANET_URL: ${OVERPASS_PLANET_URL}  # MUST be .osm.bz2 (Overpass bunzip2's it), NOT .pbf!
+      # LOCAL FILE ONLY — never a network URL. The planet .osm.bz2 is downloaded ONCE on the HOST
+      # (scripts/host-download.sh, aria2) into ${DATA_DIR}/planet-src, mounted read-only below.
+      # wiktorn's entrypoint curl's file:// (returns HTTP 000, treated as success) → disk copy, no net.
+      # This is deliberate: the container must NOT own the download (a failed init used to wipe /db
+      # and re-pull the whole planet over the network — that burned us repeatedly).
+      OVERPASS_PLANET_URL: ${OVERPASS_PLANET_URL}  # = file:///planet-src/planet.osm.bz2
       OVERPASS_DIFF_URL: ${REPLICATION_URL}
       OVERPASS_RULES_LOAD: "10"
       OVERPASS_UPDATE_SLEEP: "3600"              # apply diffs hourly after the first import
     volumes:
       - ${DATA_DIR}/overpass:/db
+      - ${DATA_DIR}/planet-src:/planet-src:ro   # host-downloaded planet file, read-only
     restart: unless-stopped
 
   nominatim:
     image: mediagis/nominatim:4.4                # PostgreSQL 14 inside → data path below
     container_name: mikeos-nominatim
+    # Local-file pattern (same rule as Overpass): for a FRESH import, download the .pbf on the HOST
+    # (scripts/host-download.sh → /data/planet-src/planet.osm.pbf) and set PBF_PATH instead of PBF_URL:
+    #   PBF_PATH: /planet-src/planet.osm.pbf     # + mount ${DATA_DIR}/planet-src:/planet-src:ro
+    # (The very first import ran with PBF_URL; switch to PBF_PATH on the next re-import so nothing
+    #  re-downloads inside the container.)
     environment:
       PBF_URL: ${PLANET_URL}
       REPLICATION_URL: ${REPLICATION_URL}

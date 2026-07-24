@@ -15,7 +15,7 @@ services:
     environment:
       OVERPASS_MODE: init                       # build a fresh DB from the planet file
       OVERPASS_META: "no"                        # 'attic' keeps full history (much bigger)
-      OVERPASS_PLANET_URL: ${PLANET_URL}
+      OVERPASS_PLANET_URL: ${OVERPASS_PLANET_URL}  # MUST be .osm.bz2 (Overpass bunzip2's it), NOT .pbf!
       OVERPASS_DIFF_URL: ${REPLICATION_URL}
       OVERPASS_RULES_LOAD: "10"
       OVERPASS_UPDATE_SLEEP: "3600"              # apply diffs hourly after the first import

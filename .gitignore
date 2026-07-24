@@ -1,4 +1,10 @@
 .env
+.deploy-credentials
+.keys
+*keys*
+.server-access*
+*credentials*
+id_mikeos_osm*
 *.osm.pbf
 *.osrm*
 data/

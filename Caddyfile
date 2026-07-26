@@ -23,12 +23,12 @@
 		# for `Accept: application/json` (which OkHttp/the app sends); the `format=json` query param
 		# already selects JSON, so force */* upstream and every client works.
 		reverse_proxy nominatim:8080 {
-			header_up Accept "*/*"
+			header_up -Accept
 		}
 	}
 	handle_path /overpass/* {
 		reverse_proxy overpass:80 {
-			header_up Accept "*/*"
+			header_up -Accept
 		}
 	}
 	handle_path /route/* {

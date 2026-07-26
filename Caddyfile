@@ -19,10 +19,17 @@
 	}
 
 	handle_path /nominatim/* {
-		reverse_proxy nominatim:8080
+		# Normalise Accept → */*. Nominatim's Apache does content-negotiation and returns HTTP 406
+		# for `Accept: application/json` (which OkHttp/the app sends); the `format=json` query param
+		# already selects JSON, so force */* upstream and every client works.
+		reverse_proxy nominatim:8080 {
+			header_up Accept "*/*"
+		}
 	}
 	handle_path /overpass/* {
-		reverse_proxy overpass:80
+		reverse_proxy overpass:80 {
+			header_up Accept "*/*"
+		}
 	}
 	handle_path /route/* {
 		reverse_proxy osrm:5000

@@ -19,9 +19,10 @@
 	}
 
 	handle_path /nominatim/* {
-		# Normalise Accept → */*. Nominatim's Apache does content-negotiation and returns HTTP 406
-		# for `Accept: application/json` (which OkHttp/the app sends); the `format=json` query param
-		# already selects JSON, so force */* upstream and every client works.
+		# DELETE the client Accept header. Nominatim's Apache has MultiViews (mod_negotiation) on and
+		# returns HTTP 406 for `Accept: application/json` (which OkHttp/the app sends); `format=json`
+		# already selects JSON, so with no Accept header Apache serves it fine. NOTE: apply Caddyfile
+		# changes with `docker restart mikeos-caddy` — `caddy reload` did NOT pick this up.
 		reverse_proxy nominatim:8080 {
 			header_up -Accept
 		}

@@ -14,21 +14,26 @@ It's the geo substrate under the whole fleet (MikeMaps search/routing today; the
 All three are behind Caddy on one HTTPS host; the app calls them with
 `Authorization: Bearer <OSM_TOKEN>`.
 
-## Demo (small extract)
+## Regional demo on a small VM
 
-Planet import needs ~128 GB RAM and terabytes of disk. To try the stack on a laptop or cloud agent,
-use a Geofabrik extract (this repo ships Monaco as the default):
+`.env.demo` points "planet" at Monaco and serves plain HTTP on 127.0.0.1:8080.
+The host needs Docker, `aria2c`, `osmium-tool`, `jq` and `curl`.
 
 ```bash
-cp .env.demo .env.demo.local   # optional local overrides
-set -a; . ./.env.demo; set +a
-bash scripts/demo-up.sh        # download → convert → import → OSRM → Caddy :8080
-bash scripts/smoke.sh          # Nominatim + Overpass + OSRM through the Bearer gate
-open http://127.0.0.1:8080/showcase/
+bash scripts/demo-up.sh   # rerunnable, prints the showcase URL
+bash scripts/smoke.sh     # exit 0 means every check passed
 ```
 
-`docker-compose.demo.yml` + `Caddyfile.demo` serve HTTP on `:8080`, skip basemap, point every
-service at host-downloaded `extract.osm.pbf` / `extract.osm.bz2`, and disable live diffs.
+Pass `--env-file .env.demo` to every other compose command, for example
+`docker compose --env-file .env.demo logs -f nominatim`.
+Tear down with `docker compose --env-file .env.demo down && sudo rm -rf data`.
+
+OSRM answers within seconds of starting. If the `osrm` check keeps failing,
+Caddy probably cannot reach the containers. On an affected host,
+`sudo iptables-legacy -S FORWARD | head -1` prints `-P FORWARD DROP`, and
+`sudo iptables-legacy -P FORWARD ACCEPT` fixes it until the next boot.
+
+Basemap runs only under the `basemap` profile. Production sets `COMPOSE_PROFILES=basemap` in `.env`.
 
 ## Hardware
 

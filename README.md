@@ -14,6 +14,22 @@ It's the geo substrate under the whole fleet (MikeMaps search/routing today; the
 All three are behind Caddy on one HTTPS host; the app calls them with
 `Authorization: Bearer <OSM_TOKEN>`.
 
+## Demo (small extract)
+
+Planet import needs ~128 GB RAM and terabytes of disk. To try the stack on a laptop or cloud agent,
+use a Geofabrik extract (this repo ships Monaco as the default):
+
+```bash
+cp .env.demo .env.demo.local   # optional local overrides
+set -a; . ./.env.demo; set +a
+bash scripts/demo-up.sh        # download → convert → import → OSRM → Caddy :8080
+bash scripts/smoke.sh          # Nominatim + Overpass + OSRM through the Bearer gate
+open http://127.0.0.1:8080/showcase/
+```
+
+`docker-compose.demo.yml` + `Caddyfile.demo` serve HTTP on `:8080`, skip basemap, point every
+service at host-downloaded `extract.osm.pbf` / `extract.osm.bz2`, and disable live diffs.
+
 ## Hardware
 
 Target: **Hetzner** Ryzen 9 5950X · **128 GB ECC** · **≥3.84 TB NVMe** (datacenter). Fast NVMe is
@@ -50,6 +66,9 @@ docker compose up -d osrm
 
 # 4) CADDY — TLS + token gate + routing.
 docker compose up -d caddy
+
+# Optional basemap (needs ../mikeos-basemap checked out):
+docker compose --profile basemap up -d basemap
 ```
 
 Tuning: if the Nominatim import is tight on RAM, cap osm2pgsql's cache (see the mediagis docs). MLD

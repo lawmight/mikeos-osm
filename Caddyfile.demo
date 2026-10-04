@@ -1,0 +1,37 @@
+# Local demo gateway on the host network. Backends are published on loopback
+# because Docker bridge forwarding is unreliable in some nested/VFS environments.
+
+:8080 {
+	encode gzip
+
+	handle /showcase* {
+		root * /srv/showcase
+		uri strip_prefix /showcase
+		file_server
+	}
+
+	@unauth {
+		not path /showcase*
+		not header Authorization "Bearer {$OSM_TOKEN}"
+	}
+	handle @unauth {
+		respond "unauthorized" 401
+	}
+
+	handle_path /nominatim/* {
+		reverse_proxy 127.0.0.1:18080 {
+			header_up -Accept
+		}
+	}
+	handle_path /overpass/* {
+		reverse_proxy 127.0.0.1:18081 {
+			header_up -Accept
+		}
+	}
+	handle_path /route/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+	handle {
+		respond "mikeos-osm demo: /nominatim /overpass /route /showcase/" 200
+	}
+}

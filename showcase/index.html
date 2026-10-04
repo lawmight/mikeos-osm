@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mikeos-osm · Monaco demo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #14201c;
+      --foam: #eef6f1;
+      --sea: #0b6e6a;
+      --sea-deep: #084845;
+      --sand: #d8c3a5;
+      --line: rgba(20, 32, 28, 0.12);
+      --panel: rgba(238, 246, 241, 0.92);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #b9e3d8 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #f0d9b5 0%, transparent 50%),
+        linear-gradient(180deg, #f7faf8 0%, #e7f0ea 100%);
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      height: 100%;
+      min-height: 100vh;
+    }
+    aside {
+      padding: 1.5rem 1.35rem 1.25rem;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      overflow: auto;
+    }
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.8rem, 3vw, 2.35rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+      animation: rise 700ms ease both;
+    }
+    .lede {
+      margin: 0 0 1.25rem;
+      color: rgba(20, 32, 28, 0.72);
+      font-size: 0.98rem;
+      animation: rise 800ms ease both;
+    }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0.9rem 0 0.35rem;
+      color: rgba(20, 32, 28, 0.55);
+    }
+    input, button, select {
+      font: inherit;
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+    }
+    .row { display: flex; gap: 0.5rem; }
+    .row button { flex: 1; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      background: var(--sea);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+    button:hover { background: var(--sea-deep); transform: translateY(-1px); }
+    button.secondary {
+      background: transparent;
+      color: var(--sea-deep);
+      border: 1px solid rgba(11, 110, 106, 0.35);
+    }
+    #map {
+      height: 100%;
+      min-height: 420px;
+      animation: fade 900ms ease both;
+    }
+    .log {
+      margin-top: 1rem;
+      padding: 0.85rem;
+      border-radius: 12px;
+      background: rgba(20, 32, 28, 0.04);
+      border: 1px solid var(--line);
+      font-size: 0.86rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(11, 110, 106, 0.1);
+      color: var(--sea-deep);
+      font-size: 0.8rem;
+      font-weight: 600;
+      animation: rise 900ms ease both;
+    }
+    .pill i {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: #2bb673;
+      box-shadow: 0 0 0 0 rgba(43, 182, 115, 0.7);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes fade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(43, 182, 115, 0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(43, 182, 115, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(43, 182, 115, 0); }
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; grid-template-rows: auto 55vh; }
+      aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <h1 class="brand">mikeos-osm</h1>
+      <p class="lede">Self-hosted search, geocoding, and routing on a Monaco extract. No rate limits. One Bearer token.</p>
+      <div class="pill"><i></i> demo extract · Monaco</div>
+
+      <label for="token">Bearer token</label>
+      <input id="token" value="demo-monaco-token-change-me" autocomplete="off" />
+
+      <label for="query">Nominatim geocode</label>
+      <div class="row">
+        <input id="query" value="Casino de Monaco" />
+        <button id="geocodeBtn" type="button">Find</button>
+      </div>
+
+      <label>Overpass cafés nearby</label>
+      <button id="poiBtn" class="secondary" type="button">Load cafés</button>
+
+      <label>OSRM drive</label>
+      <button id="routeBtn" type="button">Route casino → palace</button>
+
+      <pre class="log" id="log">Ready. Hit Find to geocode.</pre>
+    </aside>
+    <div id="map" aria-label="Monaco map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const BASE = location.origin;
+    const logEl = document.getElementById("log");
+    const tokenEl = document.getElementById("token");
+    const map = L.map("map", { zoomControl: true }).setView([43.7384, 7.4246], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    const layers = { markers: L.layerGroup().addTo(map), route: L.layerGroup().addTo(map) };
+    function authHeaders() {
+      return { Authorization: "Bearer " + tokenEl.value.trim() };
+    }
+    function log(msg) {
+      logEl.textContent = msg;
+    }
+    async function api(path, opts = {}) {
+      const res = await fetch(BASE + path, {
+        ...opts,
+        headers: { ...authHeaders(), ...(opts.headers || {}) }
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(res.status + " " + text.slice(0, 160));
+      try { return JSON.parse(text); }
+      catch { return text; }
+    }
+
+    document.getElementById("geocodeBtn").onclick = async () => {
+      const q = document.getElementById("query").value.trim();
+      log("Geocoding “" + q + "”…");
+      try {
+        const rows = await api("/nominatim/search?format=json&limit=1&q=" + encodeURIComponent(q));
+        if (!rows.length) { log("No Nominatim hit."); return; }
+        const hit = rows[0];
+        const lat = +hit.lat, lon = +hit.lon;
+        layers.markers.clearLayers();
+        L.marker([lat, lon]).addTo(layers.markers).bindPopup(hit.display_name).openPopup();
+        map.flyTo([lat, lon], 16, { duration: 1.1 });
+        log("Nominatim\n" + hit.display_name + "\n" + lat.toFixed(5) + ", " + lon.toFixed(5));
+      } catch (e) { log(String(e.message || e)); }
+    };
+
+    document.getElementById("poiBtn").onclick = async () => {
+      log("Overpass amenity=cafe in Monaco bbox…");
+      const body = 'data=[out:json][timeout:25];node["amenity"="cafe"](43.72,7.40,43.75,7.45);out 12;';
+      try {
+        const data = await api("/overpass/api/interpreter", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+        layers.markers.clearLayers();
+        const els = data.elements || [];
+        els.forEach((n) => {
+          const name = (n.tags && (n.tags.name || n.tags["name:en"])) || "café";
+          L.circleMarker([n.lat, n.lon], {
+            radius: 7, color: "#0b6e6a", weight: 2, fillColor: "#d8c3a5", fillOpacity: 0.9
+          }).addTo(layers.markers).bindPopup(name);
+        });
+        if (els.length) map.fitBounds(layers.markers.getBounds().pad(0.2), { animate: true });
+        log("Overpass\n" + els.length + " cafés in bbox");
+      } catch (e) { log(String(e.message || e)); }
+    };
+
+    document.getElementById("routeBtn").onclick = async () => {
+      // Casino Monte-Carlo → Prince's Palace (approx)
+      const coords = "7.4275,43.7396;7.4206,43.7311";
+      log("OSRM driving route…");
+      try {
+        const data = await api("/route/route/v1/driving/" + coords + "?overview=full&geometries=geojson");
+        const route = data.routes && data.routes[0];
+        if (!route) { log("No route."); return; }
+        layers.route.clearLayers();
+        const line = L.geoJSON(route.geometry, {
+          style: { color: "#084845", weight: 5, opacity: 0.9 }
+        }).addTo(layers.route);
+        map.fitBounds(line.getBounds().pad(0.2), { animate: true });
+        const km = (route.distance / 1000).toFixed(2);
+        const min = Math.round(route.duration / 60);
+        log("OSRM\n" + km + " km · ~" + min + " min\n" + (data.waypoints || []).map((w) => w.name || "waypoint").join(" → "));
+      } catch (e) { log(String(e.message || e)); }
+    };
+  </script>
+</body>
+</html>

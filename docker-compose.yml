@@ -32,19 +32,20 @@ services:
   nominatim:
     image: mediagis/nominatim:4.4                # PostgreSQL 14 inside → data path below
     container_name: mikeos-nominatim
-    # Local-file pattern (same rule as Overpass): for a FRESH import, download the .pbf on the HOST
-    # (scripts/host-download.sh → /data/planet-src/planet.osm.pbf) and set PBF_PATH instead of PBF_URL:
-    #   PBF_PATH: /planet-src/planet.osm.pbf     # + mount ${DATA_DIR}/planet-src:/planet-src:ro
-    # (The very first import ran with PBF_URL; switch to PBF_PATH on the next re-import so nothing
-    #  re-downloads inside the container.)
+    # Local file only: host-download the .pbf, then this path. Never PBF_URL inside the container.
     environment:
-      PBF_URL: ${PLANET_URL}
+      PBF_PATH: /planet-src/planet.osm.pbf
       REPLICATION_URL: ${REPLICATION_URL}
       NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
       IMPORT_STYLE: full
       THREADS: ${THREADS}
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-}
+      POSTGRES_AUTOVACUUM_WORK_MEM: ${POSTGRES_AUTOVACUUM_WORK_MEM:-}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-}
     volumes:
       - ${DATA_DIR}/nominatim:/var/lib/postgresql/14/main
+      - ${DATA_DIR}/planet-src:/planet-src:ro
     shm_size: "2g"
     restart: unless-stopped
 

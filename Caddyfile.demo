@@ -1,7 +1,6 @@
-# Local demo gateway on the host network. Backends are published on loopback
-# because Docker bridge forwarding is unreliable in some nested/VFS environments.
+# Demo gateway: plain HTTP. Same Bearer gate as production, plus a public /showcase page.
 
-:8080 {
+:80 {
 	encode gzip
 
 	handle /showcase* {
@@ -19,17 +18,17 @@
 	}
 
 	handle_path /nominatim/* {
-		reverse_proxy 127.0.0.1:18080 {
+		reverse_proxy nominatim:8080 {
 			header_up -Accept
 		}
 	}
 	handle_path /overpass/* {
-		reverse_proxy 127.0.0.1:18081 {
+		reverse_proxy overpass:80 {
 			header_up -Accept
 		}
 	}
 	handle_path /route/* {
-		reverse_proxy 127.0.0.1:5000
+		reverse_proxy osrm:5000
 	}
 	handle {
 		respond "mikeos-osm demo: /nominatim /overpass /route /showcase/" 200

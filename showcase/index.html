@@ -188,7 +188,7 @@
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
 
-    const layers = { markers: L.layerGroup().addTo(map), route: L.layerGroup().addTo(map) };
+    const layers = { markers: L.featureGroup().addTo(map), route: L.layerGroup().addTo(map) };
     function authHeaders() {
       return { Authorization: "Bearer " + tokenEl.value.trim() };
     }

@@ -157,7 +157,7 @@
       <div class="pill"><i></i> demo extract · Monaco</div>
 
       <label for="token">Bearer token</label>
-      <input id="token" value="demo-monaco-token-change-me" autocomplete="off" />
+      <input id="token" autocomplete="off" />
 
       <label for="query">Nominatim geocode</label>
       <div class="row">
@@ -181,13 +181,14 @@
     const BASE = location.origin;
     const logEl = document.getElementById("log");
     const tokenEl = document.getElementById("token");
+    tokenEl.value = new URLSearchParams(location.hash.slice(1)).get("token") || "";
     const map = L.map("map", { zoomControl: true }).setView([43.7384, 7.4246], 14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
 
-    const layers = { markers: L.layerGroup().addTo(map), route: L.layerGroup().addTo(map) };
+    const layers = { markers: L.featureGroup().addTo(map), route: L.featureGroup().addTo(map) };
     function authHeaders() {
       return { Authorization: "Bearer " + tokenEl.value.trim() };
     }

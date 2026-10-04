@@ -1,0 +1,69 @@
+# Demo overlay: regional extract on one box without planet disk/RAM or public TLS.
+# Usage:
+#   set -a; . ./.env.demo; set +a
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+#
+# Skips basemap (needs sibling mikeos-basemap). Serves HTTP on :8080 with the Bearer gate.
+#
+# NOTE: this environment's Docker bridge drops inter-container traffic, so backends
+# publish to the host and Caddy uses network_mode: host → 127.0.0.1.
+
+services:
+  overpass:
+    environment:
+      OVERPASS_MODE: init
+      OVERPASS_META: "no"
+      OVERPASS_PLANET_URL: file:///planet-src/extract.osm.bz2
+      # Static extract: no diffs (planet minute diffs would inflate a city dump).
+      OVERPASS_DIFF_URL: ""
+      OVERPASS_UPDATE_SLEEP: "86400"
+      OVERPASS_USE_AREAS: "false"
+    volumes:
+      - ${DATA_DIR}/overpass:/db
+      - ${DATA_DIR}/planet-src:/planet-src:ro
+    ports:
+      - "18081:80"
+
+  nominatim:
+    environment:
+      # Prefer local file (host-downloaded). Unset URL so the image does not re-fetch.
+      PBF_URL: ""
+      PBF_PATH: /planet-src/extract.osm.pbf
+      REPLICATION_URL: ""
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
+      IMPORT_STYLE: full
+      THREADS: ${THREADS}
+      # mediagis/nominatim:4.4 defaults to maintenance_work_mem=10GB.
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 1GB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4GB
+    volumes:
+      - ${DATA_DIR}/nominatim:/var/lib/postgresql/14/main
+      - ${DATA_DIR}/planet-src:/planet-src:ro
+    shm_size: "1g"
+    ports:
+      - "18080:8080"
+
+  osrm:
+    command: osrm-routed --algorithm mld --max-table-size 8000 /data/extract.osrm
+    volumes:
+      - ${DATA_DIR}/osrm:/data
+    ports:
+      - "5000:5000"
+
+  basemap:
+    profiles: ["basemap"]
+
+  caddy:
+    depends_on: [overpass, nominatim, osrm]
+    network_mode: host
+    environment:
+      OSM_TOKEN: ${OSM_TOKEN}
+    volumes:
+      - ./Caddyfile.demo:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR}/caddy/data:/data
+      - ${DATA_DIR}/caddy/config:/config
+      - ./showcase:/srv/showcase:ro
+    # host network owns the listen; drop compose port publishes from the base file
+    ports: !reset []

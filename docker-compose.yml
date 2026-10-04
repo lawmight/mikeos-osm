@@ -57,11 +57,10 @@ services:
       - ${DATA_DIR}/osrm:/data
     restart: unless-stopped
 
-  # Basemap tiles (Protomaps planet PMTiles) — reuses the mikeos-basemap container (go-pmtiles +
-  # style + assets) as a plain-HTTP backend on :8082; the host Caddy fronts it at tiles.osmike.com.
-  # Serving PMTiles is byte-range reads → negligible RAM. Clone milkosten/mikeos-basemap next to
-  # this repo (../mikeos-basemap) so the build context resolves.
+  # Basemap tiles (Protomaps planet PMTiles) — optional. Needs sibling milkosten/mikeos-basemap
+  # checked out at ../mikeos-basemap. Enable with: docker compose --profile basemap up -d basemap
   basemap:
+    profiles: ["basemap"]
     build: ../mikeos-basemap
     container_name: mikeos-basemap
     environment:

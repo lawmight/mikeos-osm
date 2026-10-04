@@ -1,4 +1,7 @@
 .env
+.env.demo.local
+/data/
+.audit/
 .deploy-credentials
 .keys
 *keys*

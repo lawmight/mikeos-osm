@@ -33,6 +33,11 @@ services:
       NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
       IMPORT_STYLE: full
       THREADS: ${THREADS}
+      # mediagis/nominatim:4.4 defaults to maintenance_work_mem=10GB.
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 1GB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4GB
     volumes:
       - ${DATA_DIR}/nominatim:/var/lib/postgresql/14/main
       - ${DATA_DIR}/planet-src:/planet-src:ro
